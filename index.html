@@ -194,12 +194,12 @@ body{padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
 
 <div class="top-bar">
     <input type="text" id="searchInput" placeholder="🔍 गाँव/शहर खोजें...">
-    <button id="searchBtn">खोज</button>
-<button id="sourceBtn" style="background:rgba(139,92,246,.25);color:#e9d5ff;" title="Data Source">📡
-</button>
-    <button class="refresh-btn" id="refreshBtn">🔄</button>
-    <button class="home-btn" id="homeBtn">🏠</button>
-    <button class="menu-btn" id="menuBtn">⋮</button>
+<button id="searchBtn">खोज</button>
+<button id="sourceBtn" style="background:rgba(139,92,246,.25);color:#e9d5ff;" title="Data Source">📡</button>
+<button id="translateTopBtn" style="background:rgba(59,130,246,.25);color:#93c5fd;" title="Translate">🌐 अनुवाद</button>
+<button class="refresh-btn" id="refreshBtn">🔄</button>
+<button class="home-btn" id="homeBtn">🏠</button>
+<button class="menu-btn" id="menuBtn">⋮</button>
 </div>
 
 <div class="search-results" id="searchResults"></div>
@@ -664,7 +664,7 @@ function renderSavedChips() {
 
 // ===================== MAP WITH LAYER SWITCH =====================
 const mapLayers = {
-    street: () => L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap © CARTO' }),
+    street: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri © OpenStreetMap' }),
     night: () => L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB' }),
     terrain: () => L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '© OpenTopoMap' }),
     satellite: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri' })
@@ -1614,7 +1614,7 @@ const HOSTED_URL = 'https://123ihuman.github.io/iweather-app/';
 const GDACS_PROXY = 'https://shrill-mud-304e.umadivy500.workers.dev/gdacs';
 const USGS_PROXY = 'https://shrill-mud-304e.umadivy500.workers.dev/usgs';
 
-document.getElementById('menuTranslate').addEventListener('click', () => {
+function openTranslatePrompt() {
     drawerOverlay.classList.remove('active');
     const targetLang = prompt(
         '🌐 Enter your language code:\n\n' +
@@ -1633,7 +1633,12 @@ document.getElementById('menuTranslate').addEventListener('click', () => {
     const code = targetLang.trim().toLowerCase();
     const translateUrl = `https://translate.google.com/translate?sl=auto&tl=${code}&u=${encodeURIComponent(HOSTED_URL)}`;
     window.open(translateUrl, '_blank');
-});
+}
+
+// Top bar translate button
+const translateTopBtn = document.getElementById('translateTopBtn');
+if (translateTopBtn) translateTopBtn.addEventListener('click', openTranslatePrompt);
+document.getElementById('menuTranslate').addEventListener('click', openTranslatePrompt);
 // ===================== DATA SOURCE SELECTOR (40+ sources) =====================
 const DATA_SOURCES = {
     weather: {
