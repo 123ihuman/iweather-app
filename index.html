@@ -229,6 +229,17 @@ body{padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
     <button data-layer="terrain">⛰️ प्राकृतिक</button>
     <button data-layer="satellite">🛰️ उपग्रह</button>
 </div>
+<div class="map-switch" id="satSwitch" style="margin-top:-6px;">
+    <span style="font-size:.6rem;color:#93c5fd;display:block;width:100%;text-align:center;margin-bottom:4px;">🛰️ अंतर्राष्ट्रीय उपग्रह डेटा (NASA/ESA)</span>
+    <button data-sat="nasa-truecolor">🌍 TrueColor</button>
+    <button data-sat="nasa-clouds">☁️ बादल</button>
+    <button data-sat="nasa-fires">🔥 आग</button>
+    <button data-sat="nasa-snow">❄️ बर्फ</button>
+    <button data-sat="nasa-veg">🌿 वनस्पति</button>
+    <button data-sat="nasa-sst">🌊 समुद्र ताप</button>
+    <button data-sat="sentinel-cloudless">🌿 Sentinel-2</button>
+    <button data-sat="nasa-aerosol">🌫️ धूल/प्रदूषण</button>
+</div>
 
 <div style="display:flex;justify-content:center;margin:12px 0;">
     <button id="locateMeBtn" style="background:linear-gradient(90deg,#3b82f6,#8b5cf6);color:#fff;border:none;padding:14px 28px;border-radius:40px;font-size:.95rem;font-weight:600;cursor:pointer;box-shadow:0 0 20px rgba(59,130,246,.4);">
@@ -325,17 +336,49 @@ body{padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
     </div>
 </div>
 
-<div class="section-title" style="margin-top:30px;"><span>🌍 डेटा स्रोत</span><span class="line"></span></div>
 <div style="background:rgba(255,255,255,.03);border-radius:18px;padding:16px;border:1px solid rgba(255,255,255,.05);margin-bottom:16px;">
-    <div style="font-size:.7rem;opacity:.8;line-height:1.7;">
+
+    <div style="font-size:.7rem;color:#93c5fd;font-weight:700;margin-bottom:6px;">🌦️ Weather Models (17)</div>
+    <div style="font-size:.68rem;line-height:1.8;margin-bottom:12px;">
         <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇪🇺 ECMWF</span>
-        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇺🇸 NOAA</span>
+        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇺🇸 NOAA GFS</span>
         <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇩🇪 DWD ICON</span>
+        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇫🇷 Météo-France</span>
         <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇯🇵 JMA</span>
         <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇬🇧 UK Met</span>
+        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇨🇳 CMA</span>
+        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇰🇷 KMA</span>
+        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇦🇺 BOM</span>
+        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇨🇦 Env Canada</span>
+        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇨🇭 MeteoSwiss</span>
+        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇳🇱 KNMI</span>
+        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇩🇰 DMI</span>
+        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇳🇴 Met Norway</span>
+        <span style="background:rgba(59,130,246,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇮🇹 ItaliaMeteo</span>
+        <span style="background:rgba(250,204,21,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇮🇳 IMD (संदर्भ)</span>
+        <span style="background:rgba(250,204,21,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇷🇺 Roshydromet (संदर्भ)</span>
+    </div>
+
+    <div style="font-size:.7rem;color:#fca5a5;font-weight:700;margin-bottom:6px;">🚨 Disaster Alerts (7)</div>
+    <div style="font-size:.68rem;line-height:1.8;margin-bottom:12px;">
         <span style="background:rgba(239,68,68,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🌋 USGS</span>
         <span style="background:rgba(239,68,68,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🇺🇳 GDACS</span>
+        <span style="background:rgba(239,68,68,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🔥 NASA FIRMS</span>
+        <span style="background:rgba(239,68,68,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🌊 NOAA PTWC</span>
+        <span style="background:rgba(239,68,68,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🌋 VAAC</span>
+        <span style="background:rgba(239,68,68,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🛰️ Copernicus EMS</span>
+        <span style="background:rgba(239,68,68,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">📰 ReliefWeb</span>
     </div>
+
+    <div style="font-size:.7rem;color:#4ade80;font-weight:700;margin-bottom:6px;">🛰️ Satellite Imagery (5)</div>
+    <div style="font-size:.68rem;line-height:1.8;">
+        <span style="background:rgba(34,197,94,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🛰️ NASA GIBS</span>
+        <span style="background:rgba(34,197,94,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🛰️ ESA Sentinel-2</span>
+        <span style="background:rgba(34,197,94,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🛰️ NOAA GOES</span>
+        <span style="background:rgba(34,197,94,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🛰️ EUMETSAT Meteosat</span>
+        <span style="background:rgba(34,197,94,.1);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block;">🛰️ JMA Himawari</span>
+    </div>
+
 </div>
 
 <div class="section-title" style="margin-top:30px;"><span>🌍 वैश्विक पहुँच</span><span class="line"></span></div>
@@ -700,6 +743,105 @@ document.getElementById('mapSwitch').addEventListener('click', e => {
     if (map && currentLayer) { map.removeLayer(currentLayer); }
     currentLayer = mapLayers[layerName]();
     if (map) currentLayer.addTo(map);
+    if (typeof updateSourceBadge === 'function') updateSourceBadge();
+});
+// ===================== REAL SATELLITE DATA (NASA GIBS + ESA Sentinel-2) =====================
+const satelliteDataLayers = {
+    'nasa-truecolor': {
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/{time}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg',
+        attribution: '© NASA EOSDIS GIBS',
+        maxZoom: 9,
+        daysAgo: 1
+    },
+    'nasa-clouds': {
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_Cloud_Fraction_Day/default/{time}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png',
+        attribution: '© NASA EOSDIS GIBS',
+        maxZoom: 6,
+        daysAgo: 1
+    },
+    'nasa-fires': {
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_Thermal_Anomalies_All/default/{time}/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png',
+        attribution: '© NASA EOSDIS GIBS',
+        maxZoom: 7,
+        daysAgo: 1
+    },
+    'nasa-snow': {
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_Snow_Cover/default/{time}/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',
+        attribution: '© NASA EOSDIS GIBS',
+        maxZoom: 8,
+        daysAgo: 1
+    },
+    'nasa-veg': {
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/{time}/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',
+        attribution: '© NASA EOSDIS GIBS',
+        maxZoom: 8,
+        daysAgo: 8
+    },
+    'nasa-sst': {
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_Sea_Surface_Temperature/default/{time}/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png',
+        attribution: '© NASA EOSDIS GIBS',
+        maxZoom: 7,
+        daysAgo: 1
+    },
+    'sentinel-cloudless': {
+        url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg',
+        attribution: '© ESA Sentinel-2 cloudless (EOX)',
+        maxZoom: 14,
+        daysAgo: 0
+    },
+    'nasa-aerosol': {
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_Aerosol/default/{time}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png',
+        attribution: '© NASA EOSDIS GIBS',
+        maxZoom: 6,
+        daysAgo: 1
+    }
+};
+
+function getGibsDate(daysAgo) {
+    const d = new Date(Date.now() - daysAgo * 86400000);
+    return d.toISOString().split('T')[0];
+}
+
+const satSwitch = document.getElementById('satSwitch');
+if (satSwitch) {
+    satSwitch.addEventListener('click', e => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        const satKey = btn.dataset.sat;
+        const info = satelliteDataLayers[satKey];
+        if (!info) return;
+
+        // Visual active state
+        document.querySelectorAll('#satSwitch button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#mapSwitch button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Swap layer
+        if (map && currentLayer) map.removeLayer(currentLayer);
+        const layerUrl = info.url.replace('{time}', getGibsDate(info.daysAgo || 1));
+        currentLayer = L.tileLayer(layerUrl, {
+            attribution: info.attribution,
+            maxZoom: 19,
+            maxNativeZoom: info.maxZoom
+        });
+        if (map) currentLayer.addTo(map);
+
+        // Show badge
+        const badge = document.getElementById('sourceBadge');
+        const badgeTxt = document.getElementById('sourceBadgeText');
+        if (badge && badgeTxt) {
+            badge.style.display = 'flex';
+            badge.style.background = 'rgba(59,130,246,.15)';
+            badge.style.borderColor = 'rgba(59,130,246,.5)';
+            badge.style.color = '#fff';
+            badgeTxt.innerHTML = `🛰️ Satellite: <strong>${btn.textContent.trim()}</strong> · ${info.attribution}`;
+        }
+    });
+}
+
+// Also: when user clicks a basic map layer, clear satellite button highlight
+document.getElementById('mapSwitch').addEventListener('click', () => {
+    document.querySelectorAll('#satSwitch button').forEach(b => b.classList.remove('active'));
 });
 
 // ===================== CACHE =====================
@@ -852,7 +994,6 @@ function loadWeatherData(lat, lon, cityName, silent) {
         content.innerHTML = '<div class="loading">⏳ मौसम डेटा लोड हो रहा है...</div>';
         solarContent.innerHTML = '';
     }
-    if (refreshBtn) refreshBtn.classList.add('spinning');
 if (refreshBtn) refreshBtn.classList.add('spinning');
 isFetching = true; updateLiveBadge && updateLiveBadge();
     Promise.all([fetchWeather(lat, lon), fetchAQI(lat, lon)])
