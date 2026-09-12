@@ -208,7 +208,7 @@ body{padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
     <span style="opacity:.5;font-size:.7rem;">📍 मैन्युअल:</span>
     <input type="text" id="latInput" placeholder="अक्षांश">
     <input type="text" id="lonInput" placeholder="देशांतर">
-    <button id="manualGoBtn">जाएं</button>
+    <button id="manualGoBtn" style="background:rgba(34,197,94,.25);">📍 सटीक स्थान सेट करें</button>
 </div>
 
 <div class="saved-chips" id="savedChips"></div>
@@ -876,17 +876,18 @@ async function reverseGeocode(lat, lon) {
         if (!res.ok) throw 0;
         const j = await res.json();
         if (j && j.address) {
-            return j.address.village
-                || j.address.town
-                || j.address.hamlet
-                || j.address.suburb
-                || j.address.city_district
-                || j.address.city
-                || j.address.municipality
-                || j.address.county
-                || j.address.state_district
-                || (j.display_name ? j.display_name.split(',')[0] : 'अज्ञात');
-        }
+    return j.address.neighbourhood   // Most specific
+        || j.address.hamlet          // Small settlement
+        || j.address.village         // Village
+        || j.address.town            // Town
+        || j.address.suburb          // Suburb
+        || j.address.city_district   // City district
+        || j.address.city            // City
+        || j.address.municipality    // Municipality
+        || j.address.county          // County
+        || j.address.state_district  // State district
+        || (j.display_name ? j.display_name.split(',')[0] : 'अज्ञात');
+}
         return j && j.display_name ? j.display_name.split(',')[0] : 'अज्ञात';
     } catch { return 'अज्ञात'; }
 }
@@ -1032,23 +1033,74 @@ function initApp() {
         currentCity = cached.city || currentCity;
         try { renderUI(cached.weather, cached.aqi); renderSolar(cached.weather); startCountdown(); hasRenderedOnce = true; } catch(e) {}
     }
+
     if (navigator.geolocation) {
-        if (!hasRenderedOnce) locationDisplay.innerHTML = '📍 स्थान प्राप्त...';
-        navigator.geolocation.getCurrentPosition(
-            pos => {
-                const nLat = pos.coords.latitude, nLon = pos.coords.longitude;
-                reverseGeocode(nLat, nLon).then(n => {
-                    const city = n || 'आपका स्थान';
-                    cacheLocation(nLat, nLon, city);
-                    loadWeatherData(nLat, nLon, city, hasRenderedOnce);
-                }).catch(() => loadWeatherData(nLat, nLon, 'आपका स्थान', hasRenderedOnce));
-            },
-            err => {
+        if (!hasRenderedOnce) locationDisplay.innerHTML = '📍 सटीक स्थान प्राप्त कर रहा है...';
+        
+        let bestPosition = null;
+        let watchId = null;
+        const MAX_WAIT_MS = 15000; // Wait up to 15 seconds for a good fix
+        const startTime = Date.now();
+
+        const handleNewPosition = (pos) => {
+            // Keep the most accurate reading
+            if (!bestPosition || pos.coords.accuracy < bestPosition.coords.accuracy) {
+                bestPosition = pos;
+            }
+
+            // If we have a good fix (e.g., accuracy < 100 meters) or waited long enough, use it
+            if (bestPosition.coords.accuracy <= 100 || (Date.now() - startTime) > MAX_WAIT_MS) {
+                if (watchId !== null) {
+                    navigator.geolocation.clearWatch(watchId);
+                    watchId = null;
+                }
+                usePosition(bestPosition);
+            }
+        };
+
+        const handleError = (err) => {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            // If we already have a best position, use it
+            if (bestPosition) {
+                usePosition(bestPosition);
+            } else {
                 locationDisplay.innerHTML = '📍 स्थान नहीं मिला';
                 if (!hasRenderedOnce) content.innerHTML = `<div class="error">❌ GPS चालू करें</div>`;
-            },
-            { timeout: 8000, enableHighAccuracy: true, maximumAge: 0 }
+            }
+        };
+
+        const usePosition = (pos) => {
+            const nLat = pos.coords.latitude, nLon = pos.coords.longitude;
+            console.log(`Using location with accuracy: ${pos.coords.accuracy} meters`);
+            reverseGeocode(nLat, nLon).then(n => {
+                const city = n || 'आपका स्थान';
+                cacheLocation(nLat, nLon, city);
+                loadWeatherData(nLat, nLon, city, hasRenderedOnce);
+            }).catch(() => loadWeatherData(nLat, nLon, 'आपका स्थान', hasRenderedOnce));
+        };
+
+        // Start watching the position
+        watchId = navigator.geolocation.watchPosition(
+            handleNewPosition,
+            handleError,
+            { enableHighAccuracy: true, timeout: MAX_WAIT_MS, maximumAge: 0 }
         );
+
+        // Fallback if watchPosition doesn't fire in time
+        setTimeout(() => {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                if (bestPosition) {
+                    usePosition(bestPosition);
+                } else {
+                    handleError(new Error('Timeout'));
+                }
+            }
+        }, MAX_WAIT_MS + 1000);
     }
     renderSavedChips();
     setTimeout(() => initMap(currentLat, currentLon), 300);
@@ -1740,7 +1792,19 @@ document.getElementById('manualGoBtn').addEventListener('click', () => {
     const lat = parseFloat(document.getElementById('latInput').value);
     const lon = parseFloat(document.getElementById('lonInput').value);
     if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) { alert('सही निर्देशांक डालें'); return; }
+    
+    // Show a temporary success message on the button
+    const btn = document.getElementById('manualGoBtn');
+    const originalText = btn.textContent;
+    btn.textContent = '✅ स्थान सेट हो गया!';
+    btn.disabled = true;
+    
     loadWeatherData(lat, lon, `मैन्युअल (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
+    
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }, 2000);
 });
 
 // ===================== STARTUP =====================
