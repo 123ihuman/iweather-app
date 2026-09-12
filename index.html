@@ -19,6 +19,16 @@ body{padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
 .thin-title{display:flex;justify-content:space-between;align-items:center;height:26px;padding:0 6px;background:linear-gradient(90deg,#0b1a2e,#1a2f44);border-bottom:1px solid rgba(255,255,255,.05);position:sticky;top:0;z-index:700}
 .thin-title span{font-size:13px;font-weight:700;letter-spacing:2px;color:#93c5fd;font-family:Arial,sans-serif}
 .thin-title button{background:transparent;border:none;color:#fca5a5;font-size:16px;cursor:pointer;padding:2px 8px}
+.thin-title{justify-content:space-between}
+#liveBadge{transition:all .3s ease}
+#liveDot{box-shadow:0 0 8px #ef4444;animation:livePulse 1.4s infinite ease-in-out}
+@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.75)}}
+#liveBadge.offline{background:rgba(107,114,128,.3)!important;border-color:rgba(107,114,128,.5)!important}
+#liveBadge.offline #liveDot{background:#6b7280!important;box-shadow:none;animation:none}
+#liveBadge.updating{background:rgba(250,204,21,.15)!important;border-color:rgba(250,204,21,.4)!important}
+#liveBadge.updating #liveDot{background:#facc15!important;box-shadow:0 0 8px #facc15;animation:livePulse 1s infinite ease-in-out}
+#liveBadge.stale{background:rgba(250,204,21,.1)!important;border-color:rgba(250,204,21,.3)!important}
+#liveBadge.stale #liveDot{background:#facc15!important;box-shadow:none;animation:none}
 .top-bar{display:flex;gap:5px;align-items:center;background:rgba(255,255,255,.07);backdrop-filter:blur(8px);border-radius:40px;padding:4px 4px 4px 14px;border:1px solid rgba(255,255,255,.06);margin-bottom:8px;flex-wrap:wrap;position:sticky;top:max(4px,env(safe-area-inset-top));z-index:500}
 .top-bar input{flex:1;background:transparent;border:none;padding:8px 0;color:#fff;font-size:.9rem;outline:none;min-width:70px}
 .top-bar input::placeholder{color:rgba(255,255,255,.35)}
@@ -141,6 +151,10 @@ body{padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
 
 <div class="thin-title">
     <span>iWEATHER</span>
+<span id="liveBadge" style="display:none;align-items:center;gap:5px;font-size:10px;font-weight:600;letter-spacing:1px;padding:2px 10px;border-radius:20px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);">
+    <span id="liveDot" style="width:7px;height:7px;border-radius:50%;background:#ef4444;"></span>
+    <span id="liveText">LIVE</span>
+</span>
     <button id="exitAppBtn" title="Exit">✕</button>
 </div>
 
@@ -181,6 +195,8 @@ body{padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
 <div class="top-bar">
     <input type="text" id="searchInput" placeholder="🔍 गाँव/शहर खोजें...">
     <button id="searchBtn">खोज</button>
+<button id="sourceBtn" style="background:rgba(139,92,246,.25);color:#e9d5ff;" title="Data Source">📡
+</button>
     <button class="refresh-btn" id="refreshBtn">🔄</button>
     <button class="home-btn" id="homeBtn">🏠</button>
     <button class="menu-btn" id="menuBtn">⋮</button>
@@ -372,6 +388,23 @@ body{padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
     </div>
 </div>
 
+<!-- ===================== DATA SOURCE MODAL ===================== -->
+<div id="sourceModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);backdrop-filter:blur(10px);z-index:10001;justify-content:center;align-items:flex-end;">
+    <div style="background:#0b1a2e;border-radius:24px 24px 0 0;padding:20px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;border-top:2px solid #8b5cf6;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h3 style="color:#e9d5ff;font-size:1.05rem;">📡 Choose Data Source</h3>
+            <button id="closeSourceModal" style="background:none;border:none;color:#fca5a5;font-size:22px;cursor:pointer;">×</button>
+        </div>
+        <div id="sourceNote" style="display:none;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.3);border-radius:10px;padding:8px 12px;font-size:.72rem;color:#facc15;margin-bottom:12px;"></div>
+        <div id="sourceListContainer" style="display:flex;flex-direction:column;gap:14px;"></div>
+    </div>
+</div>
+
+<!-- ===================== ACTIVE SOURCE BADGE ===================== -->
+<div id="sourceBadge" style="margin:8px 0;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.4);border-radius:30px;padding:6px 14px;font-size:.75rem;color:#e9d5ff;display:none;justify-content:space-between;align-items:center;gap:8px;">
+    <span id="sourceBadgeText">📡 Data Source: Auto</span>
+    <button id="clearSourceBtn" style="background:none;border:none;color:#fca5a5;font-size:16px;cursor:pointer;padding:0 4px;">×</button>
+</div>
 <div class="exit-modal" id="exitModal">
     <div class="exit-box">
         <div class="emoji-heart">❤️</div>
@@ -631,7 +664,7 @@ function renderSavedChips() {
 
 // ===================== MAP WITH LAYER SWITCH =====================
 const mapLayers = {
-    street: () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }),
+    street: () => L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap © CARTO' }),
     night: () => L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB' }),
     terrain: () => L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '© OpenTopoMap' }),
     satellite: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri' })
@@ -820,6 +853,8 @@ function loadWeatherData(lat, lon, cityName, silent) {
         solarContent.innerHTML = '';
     }
     if (refreshBtn) refreshBtn.classList.add('spinning');
+if (refreshBtn) refreshBtn.classList.add('spinning');
+isFetching = true; updateLiveBadge && updateLiveBadge();
     Promise.all([fetchWeather(lat, lon), fetchAQI(lat, lon)])
         .then(([weather, aqi]) => {
     renderUI(weather, aqi);
@@ -827,14 +862,15 @@ function loadWeatherData(lat, lon, cityName, silent) {
     startCountdown();
     renderSavedChips();
     cacheWeather(lat, lon, weather, aqi, currentCity);
-    cacheLocation(lat, lon, currentCity);
-    hasRenderedOnce = true;
+if (typeof markLiveFetchSuccess === 'function') markLiveFetchSuccess();
+cacheLocation(lat, lon, currentCity);
+hasRenderedOnce = true;
     setTimeout(() => checkAllAlerts(lat, lon), 500);
     // 🆕 Refresh all disaster panels with real data
     setTimeout(() => refreshAllDisasterPanels(lat, lon, weather), 800);
 })
         .catch(err => { if (!hasRenderedOnce) content.innerHTML = `<div class="error">❌ ${escapeHtml(err.message)}</div>`; })
-        .finally(() => { if (refreshBtn) refreshBtn.classList.remove('spinning'); });
+        .finally(() => { if (refreshBtn) refreshBtn.classList.remove('spinning'); isFetching = false; if (typeof updateLiveBadge === 'function') updateLiveBadge(); });
 }
 
 function initApp() {
@@ -1598,6 +1634,231 @@ document.getElementById('menuTranslate').addEventListener('click', () => {
     const translateUrl = `https://translate.google.com/translate?sl=auto&tl=${code}&u=${encodeURIComponent(HOSTED_URL)}`;
     window.open(translateUrl, '_blank');
 });
+// ===================== DATA SOURCE SELECTOR (40+ sources) =====================
+const DATA_SOURCES = {
+    weather: {
+        title: '🌦️ Weather Models (17)',
+        items: [
+            { id:'ecmwf', name:'ECMWF (Europe)', color:'#3b82f6', direct:true, note:'Primary global weather model. Used directly by Open-Meteo for your forecast.' },
+            { id:'noaa', name:'NOAA GFS (USA)', color:'#ef4444', direct:true, note:'US Global Forecast System. Directly used for North American data.' },
+            { id:'dwd', name:'DWD ICON (Germany)', color:'#facc15', direct:true, note:'German high-resolution model. Directly used for Europe.' },
+            { id:'meteofr', name:'Météo-France', color:'#60a5fa', direct:true, note:'Used via Open-Meteo multi-model blend.' },
+            { id:'jma', name:'JMA (Japan)', color:'#f472b6', direct:true, note:'Japan Meteorological Agency. Used via Open-Meteo.' },
+            { id:'ukmet', name:'UK Met Office', color:'#a78bfa', direct:true, note:'UK Unified Model. Used via Open-Meteo.' },
+            { id:'cma', name:'CMA (China)', color:'#f87171', direct:true, note:'China Meteorological Administration. Used via Open-Meteo.' },
+            { id:'kma', name:'KMA (S Korea)', color:'#34d399', direct:true, note:'Korea Meteorological Administration. Used via Open-Meteo.' },
+            { id:'bom', name:'BOM (Australia)', color:'#fb923c', direct:true, note:'Bureau of Meteorology. Used via Open-Meteo.' },
+            { id:'envca', name:'Env Canada', color:'#ef4444', direct:true, note:'Environment Canada GEM model. Used via Open-Meteo.' },
+            { id:'meteoswiss', name:'MeteoSwiss', color:'#ef4444', direct:true, note:'Swiss ICON-CH high-resolution model. Used via Open-Meteo.' },
+            { id:'knmi', name:'KNMI (Netherlands)', color:'#fb923c', direct:true, note:'Dutch Harmonie model. Used via Open-Meteo.' },
+            { id:'dmi', name:'DMI (Denmark)', color:'#ef4444', direct:true, note:'Danish Harmonie model. Used via Open-Meteo.' },
+            { id:'metno', name:'Met Norway', color:'#3b82f6', direct:true, note:'Norwegian Harmonie model. Used via Open-Meteo.' },
+            { id:'italia', name:'ItaliaMeteo', color:'#22c55e', direct:true, note:'Italian ICON-ITA model. Used via Open-Meteo.' },
+            { id:'imd', name:'IMD (India)', color:'#facc15', direct:false, note:'⚠️ IMD is NOT directly used. Open-Meteo uses ECMWF/ICON for India. IMD data is referenced by GDACS alerts.' },
+            { id:'roshydromet', name:'Roshydromet (Russia)', color:'#60a5fa', direct:false, note:'⚠️ Not directly used. Reference agency for Russia region.' }
+        ]
+    },
+    disaster: {
+        title: '🚨 Disaster Alerts (8)',
+        items: [
+            { id:'usgs', name:'USGS (Earthquakes)', color:'#ef4444', direct:true, note:'Direct feed for all M4+ earthquakes within 500km.' },
+            { id:'gdacs', name:'GDACS (UN/EU)', color:'#f87171', direct:true, note:'Global Disaster Alert and Coordination System. Direct feed.' },
+            { id:'firms', name:'NASA FIRMS (Fires)', color:'#fb923c', direct:false, note:'⚠️ Fires come via GDACS, not directly from FIRMS API.' },
+            { id:'ptwc', name:'NOAA PTWC (Tsunami)', color:'#3b82f6', direct:false, note:'⚠️ Tsunami detection uses USGS tsunami flag + physics model.' },
+            { id:'vaac', name:'VAAC (Volcanic Ash)', color:'#a78bfa', direct:false, note:'⚠️ Volcano alerts come via GDACS.' },
+            { id:'copernicus', name:'Copernicus EMS', color:'#22c55e', direct:false, note:'⚠️ Not directly queried — reference for EU emergencies.' },
+            { id:'reliefweb', name:'ReliefWeb (UN OCHA)', color:'#60a5fa', direct:false, note:'⚠️ Not directly queried — human crisis reports.' },
+            { id:'emsc', name:'EMSC (Europe Quakes)', color:'#facc15', direct:false, note:'⚠️ Not directly queried — European seismic network.' }
+        ]
+    },
+    satellite: {
+        title: '🛰️ Satellite Imagery (10)',
+        items: [
+            { id:'nasa-gibs', name:'NASA GIBS (EOSDIS)', color:'#3b82f6', direct:true, note:'Available as map layer. Real NASA Earth imagery.' },
+            { id:'sentinel-2', name:'ESA Sentinel-2', color:'#22c55e', direct:true, note:'Available as cloudless map layer.' },
+            { id:'goes-east', name:'NOAA GOES-East', color:'#f87171', direct:false, note:'⚠️ Not directly used — America weather satellite.' },
+            { id:'goes-west', name:'NOAA GOES-West', color:'#ef4444', direct:false, note:'⚠️ Not directly used — Pacific weather satellite.' },
+            { id:'meteosat', name:'EUMETSAT Meteosat', color:'#facc15', direct:false, note:'⚠️ Data feeds into Open-Meteo, not displayed directly.' },
+            { id:'himawari', name:'JMA Himawari', color:'#f472b6', direct:false, note:'⚠️ Asia-Pacific weather satellite — feeds Open-Meteo.' },
+            { id:'sentinel-1', name:'ESA Sentinel-1 (Radar)', color:'#a78bfa', direct:false, note:'⚠️ Not used — SAR radar imagery.' },
+            { id:'landsat-9', name:'Landsat-9 (USGS)', color:'#fb923c', direct:false, note:'⚠️ Not directly used.' },
+            { id:'modis', name:'MODIS Terra (NASA)', color:'#60a5fa', direct:false, note:'⚠️ Data shown through NASA GIBS layer.' },
+            { id:'viirs', name:'VIIRS (NOAA)', color:'#facc15', direct:false, note:'⚠️ Data shown through NASA GIBS layer.' }
+        ]
+    },
+    radar: {
+        title: '📡 Ground Radar (5)',
+        items: [
+            { id:'imd-radar', name:'IMD Doppler (India)', color:'#facc15', direct:false, note:'⚠️ IMD radar NOT directly queried. Open-Meteo 15-min data replaces it.' },
+            { id:'nexrad', name:'NEXRAD (US)', color:'#ef4444', direct:false, note:'⚠️ Not directly used.' },
+            { id:'dwd-radar', name:'DWD Radar (Germany)', color:'#facc15', direct:false, note:'⚠️ Not directly used.' },
+            { id:'jma-radar', name:'JMA Radar (Japan)', color:'#f472b6', direct:false, note:'⚠️ Not directly used.' },
+            { id:'bom-radar', name:'BOM Radar (Australia)', color:'#fb923c', direct:false, note:'⚠️ Not directly used.' }
+        ]
+    }
+};
+
+let activeSource = null;
+
+// Load saved source on startup
+try {
+    const saved = localStorage.getItem('iweather_source');
+    if (saved) activeSource = JSON.parse(saved);
+} catch(e) {}
+
+// Render all categories into modal
+function renderSourceList() {
+    const container = document.getElementById('sourceListContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    Object.keys(DATA_SOURCES).forEach(catKey => {
+        const cat = DATA_SOURCES[catKey];
+        const section = document.createElement('div');
+        const header = document.createElement('div');
+        header.style.cssText = 'font-size:.75rem;font-weight:700;color:#93c5fd;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.1);';
+        header.textContent = cat.title;
+        section.appendChild(header);
+        cat.items.forEach(src => {
+            const btn = document.createElement('button');
+            const isActive = activeSource && activeSource.id === src.id;
+            btn.style.cssText = `width:100%;text-align:left;background:${isActive ? 'rgba(139,92,246,.25)' : 'rgba(255,255,255,.04)'};border:1px solid ${isActive ? '#8b5cf6' : 'rgba(255,255,255,.06)'};border-radius:12px;padding:8px 12px;margin-top:6px;color:#fff;font-size:.78rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;`;
+            btn.innerHTML = `<span>${src.name}</span><span style="color:${src.direct ? '#4ade80' : '#facc15'};font-size:.65rem;">${src.direct ? '● लाइव' : '○ संदर्भ'}</span>`;
+            btn.onclick = () => selectSource(src, catKey);
+            section.appendChild(btn);
+        });
+        container.appendChild(section);
+    });
+}
+
+function selectSource(src, catKey) {
+    activeSource = { id: src.id, name: src.name, color: src.color, direct: src.direct, note: src.note, cat: catKey };
+    localStorage.setItem('iweather_source', JSON.stringify(activeSource));
+    updateSourceBadge();
+    // Show honest note in modal
+    const noteEl = document.getElementById('sourceNote');
+    if (noteEl) {
+        noteEl.style.display = 'block';
+        noteEl.innerHTML = `<strong>${src.name}</strong><br>${src.note}`;
+    }
+    // Close modal after 1.2 sec so user reads the note
+    setTimeout(() => {
+        document.getElementById('sourceModal').style.display = 'none';
+    }, 1500);
+}
+
+function updateSourceBadge() {
+    const badge = document.getElementById('sourceBadge');
+    const txt = document.getElementById('sourceBadgeText');
+    if (!badge || !txt) return;
+    if (activeSource) {
+        badge.style.display = 'flex';
+        badge.style.background = activeSource.color + '22';
+        badge.style.borderColor = activeSource.color + '88';
+        badge.style.color = '#fff';
+        txt.innerHTML = `📡 Source: <strong>${activeSource.name}</strong>${activeSource.direct ? ' <span style="color:#4ade80;">●</span>' : ' <span style="color:#facc15;">○ संदर्भ</span>'}`;
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+// Wire up buttons
+const sourceBtn = document.getElementById('sourceBtn');
+if (sourceBtn) {
+    sourceBtn.addEventListener('click', () => {
+        renderSourceList();
+        document.getElementById('sourceModal').style.display = 'flex';
+        document.getElementById('sourceNote').style.display = 'none';
+    });
+}
+const closeSourceModal = document.getElementById('closeSourceModal');
+if (closeSourceModal) {
+    closeSourceModal.addEventListener('click', () => {
+        document.getElementById('sourceModal').style.display = 'none';
+    });
+}
+const clearSourceBtn = document.getElementById('clearSourceBtn');
+if (clearSourceBtn) {
+    clearSourceBtn.addEventListener('click', () => {
+        activeSource = null;
+        localStorage.removeItem('iweather_source');
+        updateSourceBadge();
+    });
+}
+// Apply on load
+updateSourceBadge();
+// ===================== LIVE BADGE (Real status only) =====================
+const liveBadge = document.getElementById('liveBadge');
+const liveDot = document.getElementById('liveDot');
+const liveText = document.getElementById('liveText');
+
+let lastFetchSuccess = 0;       // timestamp of last successful weather fetch
+let isFetching = false;          // true during active fetch
+
+// Called by fetchWeather when data arrives successfully
+function markLiveFetchSuccess() {
+    lastFetchSuccess = Date.now();
+}
+window.markLiveFetchSuccess = markLiveFetchSuccess;
+
+function updateLiveBadge() {
+    if (!liveBadge || !liveDot || !liveText) return;
+
+    // OFFLINE — no internet
+    if (navigator.onLine === false) {
+        liveBadge.style.display = 'inline-flex';
+        liveBadge.className = 'offline';
+        liveText.textContent = 'OFFLINE';
+        return;
+    }
+
+    // No successful fetch yet this session
+    if (lastFetchSuccess === 0) {
+        // If cached data exists but no live fetch yet, show updating
+        if (isFetching) {
+            liveBadge.style.display = 'inline-flex';
+            liveBadge.className = 'updating';
+            liveText.textContent = 'UPDATING';
+        } else {
+            liveBadge.style.display = 'none';
+        }
+        return;
+    }
+
+    const secondsAgo = Math.floor((Date.now() - lastFetchSuccess) / 1000);
+
+    // Fresh data (less than 3 minutes) — LIVE with seconds counter
+    if (secondsAgo < 180) {
+        liveBadge.style.display = 'inline-flex';
+        liveBadge.className = '';
+        liveDot.style.background = '#ef4444';
+        liveDot.style.boxShadow = '0 0 8px #ef4444';
+        liveDot.style.animation = 'livePulse 1.4s infinite ease-in-out';
+        const label = secondsAgo < 2 ? 'LIVE' : (secondsAgo < 60 ? 'LIVE · ' + secondsAgo + 's' : 'LIVE · ' + Math.floor(secondsAgo/60) + 'm');
+        liveText.textContent = label;
+        return;
+    }
+
+    // Stale (3 to 30 minutes) — yellow, no blink
+    if (secondsAgo < 1800) {
+        liveBadge.style.display = 'inline-flex';
+        liveBadge.className = 'stale';
+        liveText.textContent = 'STALE · ' + Math.floor(secondsAgo/60) + 'm';
+        return;
+    }
+
+    // Very old (more than 30 minutes) — hide
+    liveBadge.style.display = 'none';
+}
+
+// Update every second
+setInterval(updateLiveBadge, 1000);
+
+// Listen to browser online/offline events
+window.addEventListener('online', () => { updateLiveBadge(); });
+window.addEventListener('offline', () => { updateLiveBadge(); });
+
+// Initial run
+updateLiveBadge();
 console.log('iWEATHER v10.0 ready');
 </script>
 </body>
