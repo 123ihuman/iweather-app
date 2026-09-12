@@ -1034,74 +1034,107 @@ function initApp() {
         try { renderUI(cached.weather, cached.aqi); renderSolar(cached.weather); startCountdown(); hasRenderedOnce = true; } catch(e) {}
     }
 
-    if (navigator.geolocation) {
-        if (!hasRenderedOnce) locationDisplay.innerHTML = '📍 सटीक स्थान प्राप्त कर रहा है...';
-        
+    if (!hasRenderedOnce) locationDisplay.innerHTML = '📍 सटीक स्थान प्राप्त कर रहा है...';
+
+    const MAX_WAIT_MS = 25000;  // wait up to 25 seconds for a very good fix
+    const TARGET_ACCURACY = 30; // accept if accuracy is under 30 meters
+
+    const usePosition = (lat, lon, accuracy) => {
+        console.log(`📡 Using location accuracy: ${Math.round(accuracy)} meters`);
+        reverseGeocode(lat, lon).then(n => {
+            const city = n || 'आपका स्थान';
+            cacheLocation(lat, lon, city);
+            loadWeatherData(lat, lon, city, hasRenderedOnce);
+        }).catch(() => loadWeatherData(lat, lon, 'आपका स्थान', hasRenderedOnce));
+    };
+
+    const handleFailure = () => {
+        locationDisplay.innerHTML = '📍 स्थान नहीं मिला';
+        if (!hasRenderedOnce) content.innerHTML = `<div class="error">❌ GPS चालू करें और location permission दें</div>`;
+    };
+
+    const isNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+
+    // ===================== NATIVE ANDROID (Capacitor Geolocation) =====================
+    if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
+        const Geo = window.Capacitor.Plugins.Geolocation;
+
+        (async () => {
+            try {
+                const perm = await Geo.checkPermissions();
+                if (perm.location !== 'granted') {
+                    const req = await Geo.requestPermissions();
+                    if (req.location !== 'granted') { handleFailure(); return; }
+                }
+
+                let best = null;
+                let watchId = null;
+                const startTime = Date.now();
+
+                watchId = await Geo.watchPosition(
+                    { enableHighAccuracy: true, timeout: MAX_WAIT_MS, maximumAge: 0 },
+                    (pos, err) => {
+                        if (err || !pos) return;
+                        if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
+
+                        // Got a very accurate fix → stop and use it
+                        if (best.coords.accuracy <= TARGET_ACCURACY) {
+                            if (watchId) Geo.clearWatch({ id: watchId });
+                            usePosition(best.coords.latitude, best.coords.longitude, best.coords.accuracy);
+                        }
+                    }
+                );
+
+                // Fallback timer
+                setTimeout(async () => {
+                    if (watchId) { try { await Geo.clearWatch({ id: watchId }); } catch(e) {} }
+                    if (best) {
+                        usePosition(best.coords.latitude, best.coords.longitude, best.coords.accuracy);
+                    } else {
+                        // Last resort: single-shot request
+                        try {
+                            const p = await Geo.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+                            usePosition(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
+                        } catch(e) { handleFailure(); }
+                    }
+                }, MAX_WAIT_MS + 500);
+
+            } catch (err) {
+                console.warn('Native geolocation error:', err);
+                handleFailure();
+            }
+        })();
+    }
+    // ===================== BROWSER FALLBACK =====================
+    else if (navigator.geolocation) {
         let bestPosition = null;
         let watchId = null;
-        const MAX_WAIT_MS = 15000; // Wait up to 15 seconds for a good fix
         const startTime = Date.now();
 
-        const handleNewPosition = (pos) => {
-            // Keep the most accurate reading
-            if (!bestPosition || pos.coords.accuracy < bestPosition.coords.accuracy) {
-                bestPosition = pos;
-            }
-
-            // If we have a good fix (e.g., accuracy < 100 meters) or waited long enough, use it
-            if (bestPosition.coords.accuracy <= 100 || (Date.now() - startTime) > MAX_WAIT_MS) {
-                if (watchId !== null) {
-                    navigator.geolocation.clearWatch(watchId);
-                    watchId = null;
-                }
-                usePosition(bestPosition);
-            }
-        };
-
-        const handleError = (err) => {
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-            }
-            // If we already have a best position, use it
+        const finish = () => {
+            if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
             if (bestPosition) {
-                usePosition(bestPosition);
+                usePosition(bestPosition.coords.latitude, bestPosition.coords.longitude, bestPosition.coords.accuracy);
             } else {
-                locationDisplay.innerHTML = '📍 स्थान नहीं मिला';
-                if (!hasRenderedOnce) content.innerHTML = `<div class="error">❌ GPS चालू करें</div>`;
+                handleFailure();
             }
         };
 
-        const usePosition = (pos) => {
-            const nLat = pos.coords.latitude, nLon = pos.coords.longitude;
-            console.log(`Using location with accuracy: ${pos.coords.accuracy} meters`);
-            reverseGeocode(nLat, nLon).then(n => {
-                const city = n || 'आपका स्थान';
-                cacheLocation(nLat, nLon, city);
-                loadWeatherData(nLat, nLon, city, hasRenderedOnce);
-            }).catch(() => loadWeatherData(nLat, nLon, 'आपका स्थान', hasRenderedOnce));
-        };
-
-        // Start watching the position
         watchId = navigator.geolocation.watchPosition(
-            handleNewPosition,
-            handleError,
+            (pos) => {
+                if (!bestPosition || pos.coords.accuracy < bestPosition.coords.accuracy) bestPosition = pos;
+                if (bestPosition.coords.accuracy <= TARGET_ACCURACY) finish();
+            },
+            () => { if (bestPosition) finish(); else handleFailure(); },
             { enableHighAccuracy: true, timeout: MAX_WAIT_MS, maximumAge: 0 }
         );
 
-        // Fallback if watchPosition doesn't fire in time
-        setTimeout(() => {
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-                if (bestPosition) {
-                    usePosition(bestPosition);
-                } else {
-                    handleError(new Error('Timeout'));
-                }
-            }
-        }, MAX_WAIT_MS + 1000);
+        setTimeout(() => { if (watchId !== null) finish(); }, MAX_WAIT_MS + 500);
     }
+    else {
+        handleFailure();
+    }
+
     renderSavedChips();
     setTimeout(() => initMap(currentLat, currentLon), 300);
 }
@@ -1726,27 +1759,109 @@ document.getElementById('leaveAppBtn').onclick = () => {
 // ===================== LOCATE ME =====================
 document.getElementById('locateMeBtn').addEventListener('click', function() {
     const btn = this;
-    btn.innerHTML = '⏳ स्थान प्राप्त...';
+    btn.innerHTML = '⏳ सटीक स्थान प्राप्त कर रहा है...';
     btn.disabled = true;
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            pos => {
-                const lat = pos.coords.latitude, lon = pos.coords.longitude;
-                reverseGeocode(lat, lon).then(n => {
-                    loadWeatherData(lat, lon, n || 'आपका स्थान', false);
-                    if (map && marker) { map.setView([lat, lon], 15); marker.setLatLng([lat, lon]); }
-                    btn.innerHTML = '✅ अपडेट हो गया!';
-                    setTimeout(() => { btn.innerHTML = '📍 अपने स्थान का मौसम जानें — यहाँ क्लिक करें'; btn.disabled = false; }, 2000);
-                }).catch(() => {
-                    loadWeatherData(lat, lon, 'आपका स्थान', false);
-                    btn.innerHTML = '✅ अपडेट!';
-                    setTimeout(() => { btn.innerHTML = '📍 अपने स्थान का मौसम जानें — यहाँ क्लिक करें'; btn.disabled = false; }, 2000);
-                });
+
+    const MAX_WAIT_MS = 20000;
+    const TARGET_ACCURACY = 30;
+
+    const usePosition = (lat, lon, accuracy) => {
+        console.log(`🎯 Button location accuracy: ${Math.round(accuracy)} meters`);
+        reverseGeocode(lat, lon).then(n => {
+            loadWeatherData(lat, lon, n || 'आपका स्थान', false);
+            if (map && marker) { map.setView([lat, lon], 16); marker.setLatLng([lat, lon]); }
+            btn.innerHTML = '✅ अपडेट हो गया!';
+            setTimeout(() => { btn.innerHTML = '📍 अपने स्थान का मौसम जानें — यहाँ क्लिक करें'; btn.disabled = false; }, 2000);
+        }).catch(() => {
+            loadWeatherData(lat, lon, 'आपका स्थान', false);
+            btn.innerHTML = '✅ अपडेट!';
+            setTimeout(() => { btn.innerHTML = '📍 अपने स्थान का मौसम जानें — यहाँ क्लिक करें'; btn.disabled = false; }, 2000);
+        });
+    };
+
+    const fail = (msg) => {
+        alert('❌ GPS: ' + (msg || 'स्थान नहीं मिला'));
+        btn.innerHTML = '📍 अपने स्थान का मौसम जानें — यहाँ क्लिक करें';
+        btn.disabled = false;
+    };
+
+    const isNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+
+    // ===================== NATIVE (APK) =====================
+    if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
+        const Geo = window.Capacitor.Plugins.Geolocation;
+
+        (async () => {
+            try {
+                const perm = await Geo.checkPermissions();
+                if (perm.location !== 'granted') {
+                    const req = await Geo.requestPermissions();
+                    if (req.location !== 'granted') { fail('Permission denied'); return; }
+                }
+
+                let best = null;
+let watchId = null;
+watchId = await Geo.watchPosition(
+                    { enableHighAccuracy: true, timeout: MAX_WAIT_MS, maximumAge: 0 },
+                    (pos, err) => {
+                        if (err || !pos) return;
+                        if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
+                        if (best.coords.accuracy <= TARGET_ACCURACY) {
+                            if (watchId) Geo.clearWatch({ id: watchId });
+                            usePosition(best.coords.latitude, best.coords.longitude, best.coords.accuracy);
+                        }
+                    }
+                );
+
+                setTimeout(async () => {
+                    if (watchId) { try { await Geo.clearWatch({ id: watchId }); } catch(e) {} }
+                    if (best) {
+                        usePosition(best.coords.latitude, best.coords.longitude, best.coords.accuracy);
+                    } else {
+                        try {
+                            const p = await Geo.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+                            usePosition(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
+                        } catch(e) { fail(e.message); }
+                    }
+                }, MAX_WAIT_MS + 500);
+
+            } catch (err) { fail(err.message); }
+        })();
+    }
+    // ===================== BROWSER FALLBACK =====================
+    else if (navigator.geolocation) {
+        let bestPosition = null;
+        let watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+                if (!bestPosition || pos.coords.accuracy < bestPosition.coords.accuracy) bestPosition = pos;
+                if (bestPosition.coords.accuracy <= TARGET_ACCURACY) {
+                    navigator.geolocation.clearWatch(watchId);
+                    usePosition(bestPosition.coords.latitude, bestPosition.coords.longitude, bestPosition.coords.accuracy);
+                }
             },
-            err => { alert('❌ GPS: ' + err.message); btn.innerHTML = '📍 अपने स्थान का मौसम जानें — यहाँ क्लिक करें'; btn.disabled = false; },
-            { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
+            (err) => {
+                if (bestPosition) {
+                    navigator.geolocation.clearWatch(watchId);
+                    usePosition(bestPosition.coords.latitude, bestPosition.coords.longitude, bestPosition.coords.accuracy);
+                } else {
+                    fail(err.message);
+                }
+            },
+            { enableHighAccuracy: true, timeout: MAX_WAIT_MS, maximumAge: 0 }
         );
-    } else { alert('❌ GPS not supported'); btn.disabled = false; }
+
+        setTimeout(() => {
+            navigator.geolocation.clearWatch(watchId);
+            if (bestPosition) {
+                usePosition(bestPosition.coords.latitude, bestPosition.coords.longitude, bestPosition.coords.accuracy);
+            } else {
+                fail('Timeout — no GPS fix');
+            }
+        }, MAX_WAIT_MS + 500);
+    }
+    else {
+        fail('GPS not supported');
+    }
 });
 
 // ===================== SEARCH / HOME / REFRESH / MANUAL =====================
