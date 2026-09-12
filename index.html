@@ -219,6 +219,11 @@ body{padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
 </div>
 
 <div class="location-badge" id="locationDisplay">📍 स्थान प्राप्त कर रहा है...</div>
+<!-- ===================== ACTIVE SOURCE BADGE ===================== -->
+<div id="sourceBadge" style="margin:8px 0;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.4);border-radius:30px;padding:6px 14px;font-size:.75rem;color:#e9d5ff;display:none;justify-content:space-between;align-items:center;gap:8px;">
+    <span id="sourceBadgeText">📡 Data Source: Auto</span>
+    <button id="clearSourceBtn" style="background:none;border:none;color:#fca5a5;font-size:16px;cursor:pointer;padding:0 4px;">×</button>
+</div>
 
 <div id="interactiveMap"></div>
 
@@ -441,12 +446,6 @@ body{padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
         <div id="sourceNote" style="display:none;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.3);border-radius:10px;padding:8px 12px;font-size:.72rem;color:#facc15;margin-bottom:12px;"></div>
         <div id="sourceListContainer" style="display:flex;flex-direction:column;gap:14px;"></div>
     </div>
-</div>
-
-<!-- ===================== ACTIVE SOURCE BADGE ===================== -->
-<div id="sourceBadge" style="margin:8px 0;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.4);border-radius:30px;padding:6px 14px;font-size:.75rem;color:#e9d5ff;display:none;justify-content:space-between;align-items:center;gap:8px;">
-    <span id="sourceBadgeText">📡 Data Source: Auto</span>
-    <button id="clearSourceBtn" style="background:none;border:none;color:#fca5a5;font-size:16px;cursor:pointer;padding:0 4px;">×</button>
 </div>
 <div class="exit-modal" id="exitModal">
     <div class="exit-box">
@@ -873,9 +872,21 @@ async function fetchAQI(lat, lon) {
 }
 async function reverseGeocode(lat, lon) {
     try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&accept-language=hi`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1&accept-language=hi`);
         if (!res.ok) throw 0;
         const j = await res.json();
+        if (j && j.address) {
+            return j.address.village
+                || j.address.town
+                || j.address.hamlet
+                || j.address.suburb
+                || j.address.city_district
+                || j.address.city
+                || j.address.municipality
+                || j.address.county
+                || j.address.state_district
+                || (j.display_name ? j.display_name.split(',')[0] : 'अज्ञात');
+        }
         return j && j.display_name ? j.display_name.split(',')[0] : 'अज्ञात';
     } catch { return 'अज्ञात'; }
 }
@@ -1036,7 +1047,7 @@ function initApp() {
                 locationDisplay.innerHTML = '📍 स्थान नहीं मिला';
                 if (!hasRenderedOnce) content.innerHTML = `<div class="error">❌ GPS चालू करें</div>`;
             },
-            { timeout: 2500, enableHighAccuracy: false, maximumAge: 120000 }
+            { timeout: 8000, enableHighAccuracy: true, maximumAge: 0 }
         );
     }
     renderSavedChips();
@@ -1681,7 +1692,7 @@ document.getElementById('locateMeBtn').addEventListener('click', function() {
                 });
             },
             err => { alert('❌ GPS: ' + err.message); btn.innerHTML = '📍 अपने स्थान का मौसम जानें — यहाँ क्लिक करें'; btn.disabled = false; },
-            { timeout: 10000, enableHighAccuracy: true }
+            { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
         );
     } else { alert('❌ GPS not supported'); btn.disabled = false; }
 });
@@ -1721,7 +1732,7 @@ document.getElementById('homeBtn').addEventListener('click', () => {
                     .catch(() => loadWeatherData(pos.coords.latitude, pos.coords.longitude, 'आपका स्थान', false));
             },
             () => { locationDisplay.innerHTML = '📍 स्थान नहीं मिला'; if (!hasRenderedOnce) content.innerHTML = `<div class="error">❌ GPS चालू करें</div>`; },
-            { timeout: 5000, enableHighAccuracy: true }
+            { timeout: 8000, enableHighAccuracy: true, maximumAge: 0 }
         );
     }
 });
