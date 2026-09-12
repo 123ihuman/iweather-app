@@ -715,14 +715,14 @@ async function geocodeNominatim(q) {
 // ===================== ALERTS (USGS + GDACS) =====================
 async function fetchEarthquakeAlerts(lat, lon, r = 500) {
     try {
-        const res = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=${lat}&longitude=${lon}&maxradiuskm=${r}&minmagnitude=2.5&orderby=time`);
+        const res = await fetch(`https://shrill-mud-304e.umadivy500.workers.dev/usgs?format=geojson&latitude=${lat}&longitude=${lon}&maxradiuskm=${r}&minmagnitude=2.5&orderby=time`);
         const d = await res.json();
         return d.features || [];
     } catch { return []; }
 }
 async function fetchGDACSAlerts(lat, lon, r = 500) {
     try {
-        const res = await fetch('https://www.gdacs.org/xml/rss.xml');
+        const res = await fetch(GDACS_PROXY);
         const text = await res.text();
         const xml = new DOMParser().parseFromString(text, "text/xml");
         const items = xml.querySelectorAll('item');
@@ -1077,7 +1077,7 @@ function setStatus(type, state, text) {
 // ===== EARTHQUAKE =====
 async function refreshEarthquakePanel(lat, lon) {
     try {
-        const res = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=${lat}&longitude=${lon}&maxradiuskm=500&minmagnitude=4.0&orderby=time&limit=5`);
+        const res = await fetch(`https://shrill-mud-304e.umadivy500.workers.dev/usgs?format=geojson&latitude=${lat}&longitude=${lon}&maxradiuskm=500&minmagnitude=4.0&orderby=time&limit=5`);
         const data = await res.json();
         const timerEl = document.getElementById('dc-timer-earthquake');
         const infoEl = document.getElementById('dc-info-earthquake');
@@ -1169,7 +1169,7 @@ async function refreshFloodPanel(lat, lon) {
 // ===== CYCLONE =====
 async function refreshCyclonePanel(lat, lon) {
     try {
-        const res = await fetch('https://www.gdacs.org/xml/rss.xml');
+        const res = await fetch(GDACS_PROXY);
         const text = await res.text();
         const xml = new DOMParser().parseFromString(text, 'text/xml');
         const items = xml.querySelectorAll('item');
@@ -1210,7 +1210,7 @@ async function refreshCyclonePanel(lat, lon) {
 // ===== TSUNAMI =====
 async function refreshTsunamiPanel(lat, lon) {
     try {
-        const res = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=${lat}&longitude=${lon}&maxradiuskm=2000&minmagnitude=6.5&orderby=time&limit=5`);
+        const res = await fetch(`https://shrill-mud-304e.umadivy500.workers.dev/usgs?format=geojson&latitude=${lat}&longitude=${lon}&maxradiuskm=2000&minmagnitude=6.5&orderby=time&limit=5`);
         const data = await res.json();
         const timerEl = document.getElementById('dc-timer-tsunami');
         const infoEl = document.getElementById('dc-info-tsunami');
@@ -1256,7 +1256,7 @@ async function refreshTsunamiPanel(lat, lon) {
 // ===== VOLCANO =====
 async function refreshVolcanoPanel(lat, lon) {
     try {
-        const res = await fetch('https://www.gdacs.org/xml/rss.xml');
+        const res = await fetch(GDACS_PROXY);
         const text = await res.text();
         const xml = new DOMParser().parseFromString(text, 'text/xml');
         const items = xml.querySelectorAll('item');
@@ -1366,7 +1366,7 @@ function refreshLightningPanel(weather) {
 // ===== WILDFIRE =====
 async function refreshWildfirePanel(lat, lon) {
     try {
-        const res = await fetch('https://www.gdacs.org/xml/rss.xml');
+        const res = await fetch(GDACS_PROXY);
         const text = await res.text();
         const xml = new DOMParser().parseFromString(text, 'text/xml');
         const items = xml.querySelectorAll('item');
@@ -1575,6 +1575,8 @@ setInterval(() => { if (currentLat && currentLon) loadWeatherData(currentLat, cu
 // ===================== TRANSLATE IN BROWSER =====================
 // Replace this with your hosted URL after following Step 3 below
 const HOSTED_URL = 'https://123ihuman.github.io/iweather-app/';
+const GDACS_PROXY = 'https://shrill-mud-304e.umadivy500.workers.dev/gdacs';
+const USGS_PROXY = 'https://shrill-mud-304e.umadivy500.workers.dev/usgs';
 
 document.getElementById('menuTranslate').addEventListener('click', () => {
     drawerOverlay.classList.remove('active');
